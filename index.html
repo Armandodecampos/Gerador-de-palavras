@@ -1,10 +1,292 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Página Inicial</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Palavra Aleatória Dinâmica</title>
+    <!-- Carrega Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração do Tailwind para usar a fonte Inter e cores personalizadas -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#4f46e5', // Indigo-600
+                        'secondary': '#eef2ff', // Indigo-50
+                        'accent': '#10b981', // Emerald-500
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Define a fonte Inter para o corpo do documento */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Gray-50 */
+        }
+        /* Estilo para a animação de fade-in da palavra */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
-<body>
-  <h1>Olá, Mundo!</h1>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-lg bg-white p-8 md:p-10 rounded-xl shadow-2xl transition-all duration-300 hover:shadow-primary/30 border border-indigo-100">
+
+        <!-- Título -->
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 text-center">
+            Dicionário Dinâmico de Palavras
+        </h1>
+        <p class="text-center text-gray-500 mb-8">
+            Gera uma palavra aleatória do dicionário e busca sua definição em tempo real.
+        </p>
+
+        <!-- Área de Exibição da Palavra -->
+        <div class="min-h-[150px] flex items-center justify-center bg-secondary rounded-lg mb-4 p-4 shadow-inner">
+            <p id="wordDisplay" class="text-4xl md:text-6xl font-black text-primary text-center transition-all duration-300">
+                Clique para começar!
+            </p>
+        </div>
+        
+        <!-- Área de Exibição da Definição -->
+        <div class="min-h-[100px] bg-gray-50 rounded-lg p-4 mb-8 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-700 mb-2">Definição:</h2>
+            <div id="definitionDisplay" class="text-gray-600 text-base italic">
+                A definição aparecerá aqui após a geração da palavra.
+            </div>
+            <div id="loadingIndicator" class="hidden flex items-center justify-center text-primary font-medium">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                A carregar palavra e definição...
+            </div>
+        </div>
+
+
+        <!-- Botão de Geração -->
+        <button id="generateButton"
+            class="w-full bg-primary text-white py-3 px-6 rounded-lg font-semibold text-lg shadow-lg shadow-primary/40 
+                   hover:bg-indigo-700 transition-all duration-300 transform hover:scale-[1.01] active:scale-95 
+                   focus:outline-none focus:ring-4 focus:ring-primary/50"
+            aria-label="Gerar nova palavra">
+            Gerar Palavra Dinâmica
+        </button>
+
+        <!-- Mensagem de Rodapé -->
+        <div id="footerMessage" class="mt-6 text-sm text-gray-400 text-center">
+            A palavra é gerada dinamicamente pelo modelo, não de uma lista fixa.
+        </div>
+
+    </div>
+
+    <script>
+        
+        const wordDisplay = document.getElementById('wordDisplay');
+        const definitionDisplay = document.getElementById('definitionDisplay');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const generateButton = document.getElementById('generateButton');
+        const footerMessage = document.getElementById('footerMessage');
+
+        // --- Variáveis para Histórico de Repetição ---
+        const MAX_HISTORY_SIZE = 10; // Limita o histórico das últimas 10 palavras
+        const usedWordsHistory = []; 
+        // ---------------------------------------------
+
+
+        // Função genérica para chamar o Gemini API com resiliência (Exponential Backoff)
+        async function callGeminiApi(systemPrompt, userQuery) {
+            // Se você estiver executando este arquivo localmente (salvo como .html), 
+            // PRECISA inserir sua chave API válida aqui.
+            // Ex: const apiKey = "SUA_CHAVE_API_AQUI";
+            // Se estiver no ambiente Canvas, mantenha como está.
+            const apiKey = "AIzaSyC_cMGdoee-wReJaM2R4l-ePo1RDhSEm8A"; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && attempts < maxAttempts - 1) {
+                            const delay = Math.pow(2, attempts) * 1000 + Math.random() * 1000;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            attempts++;
+                            continue; // Tentar novamente
+                        }
+                        // Lança o erro com o status para tratamento no bloco catch
+                        throw new Error(`Status da resposta da API: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        return text.trim();
+                    } else {
+                        throw new Error("Resposta da API vazia ou inválida.");
+                    }
+
+                } catch (error) {
+                    console.error("Erro na chamada da API (tentativa " + (attempts + 1) + "):", error);
+                    if (attempts < maxAttempts - 1) {
+                        const delay = Math.pow(2, attempts) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        attempts++;
+                    } else {
+                        // Re-lança o erro para ser capturado no displayRandomWord
+                        throw new Error(`Erro final ao comunicar com o serviço da API. Código: ${error.message.includes('Status') ? error.message : 'Desconhecido'}`);
+                    }
+                }
+            }
+        }
+        
+        // Função para buscar uma palavra aleatória no dicionário (via API)
+        async function fetchRandomWord() {
+            // Inclui o histórico de palavras no prompt para evitar repetição
+            const historyList = usedWordsHistory.join(', ');
+            
+            // ALTERAÇÃO CRÍTICA: Pedir uma palavra de baixa frequência para aumentar a diversidade
+            const systemPrompt = `Você é um gerador de palavras aleatórias em português. Sua única tarefa é escolher uma palavra de baixa frequência em português (substantivo, adjetivo ou verbo no infinitivo) e responder apenas com essa palavra, sem pontuação, aspas, classificação ou qualquer texto adicional. A palavra deve ser uma única entidade léxica.`;
+            
+            let userQuery = "Gere uma palavra em português para o usuário.";
+            if (historyList) {
+                userQuery += ` ESTA PALAVRA NÃO DEVE SER nenhuma das seguintes: ${historyList}.`;
+            }
+
+            return await callGeminiApi(systemPrompt, userQuery);
+        }
+
+        // Função para buscar a definição da palavra gerada
+        async function fetchDefinition(word) {
+            const systemPrompt = "Aja como um lexicógrafo e forneça uma definição concisa e clara para a palavra em português. Inclua a classificação gramatical (e.g., Substantivo, Adjetivo, Verbo) no início. Omitir qualquer saudação ou introdução. Responda apenas com a classificação e a definição, formatando a classificação com dois pontos (ex: Substantivo: A definição...).";
+            const userQuery = `Definição em português e classificação gramatical da palavra: ${word}.`;
+            
+            return await callGeminiApi(systemPrompt, userQuery);
+        }
+
+        // Função principal para gerar e exibir a palavra e sua definição
+        async function displayRandomWord() {
+            // 1. Desabilitar o botão e mostrar o loading
+            generateButton.disabled = true;
+            generateButton.classList.add('opacity-50', 'cursor-not-allowed');
+            loadingIndicator.classList.remove('hidden');
+            
+            definitionDisplay.textContent = 'Gerando palavra...';
+            definitionDisplay.classList.add('italic', 'text-gray-500');
+            wordDisplay.textContent = '...';
+
+            let randomWord;
+            let definition;
+            
+            try {
+                // 2. Gerar a palavra aleatória (usando a API como dicionário)
+                randomWord = await fetchRandomWord();
+                
+                // Limpeza e Validação da Palavra
+                // Normaliza e remove caracteres indesejados
+                let cleanedWord = randomWord
+                    .replace(/[^a-zA-ZáàâãéèêíìîóòôõúùûüçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÜÇ\s]/g, '') // Remove pontuação/símbolos
+                    .trim()
+                    .toLowerCase();
+                
+                // Garantir que é uma única palavra
+                if (!cleanedWord || cleanedWord.split(/\s+/).length > 1) {
+                    // Tenta pegar a primeira palavra se houver mais de uma
+                    cleanedWord = cleanedWord.split(/\s+/)[0]; 
+                    if (!cleanedWord) {
+                         throw new Error("A palavra gerada não é válida. Tente novamente.");
+                    }
+                }
+
+                
+                // --- 3. Gerenciamento do Histórico (Adiciona a palavra válida) ---
+                usedWordsHistory.push(cleanedWord);
+                if (usedWordsHistory.length > MAX_HISTORY_SIZE) {
+                    usedWordsHistory.shift(); // Remove a palavra mais antiga
+                }
+                // -----------------------------------------------------------------
+
+
+                // 4. Atualizar a palavra exibida com animação
+                wordDisplay.classList.remove('fade-in');
+                wordDisplay.textContent = '';
+                void wordDisplay.offsetWidth; // Força reflow
+                wordDisplay.textContent = cleanedWord.toUpperCase();
+                wordDisplay.classList.add('fade-in');
+                
+                // 5. Buscar a definição para a palavra gerada
+                definitionDisplay.textContent = 'Buscando definição...';
+                definition = await fetchDefinition(cleanedWord);
+
+                // 6. Exibir a definição
+                // Formatação: Tenta destacar a classificação (ex: Substantivo: A definição...)
+                const parts = definition.match(/(\w+:)(.*)/s);
+                if (parts && parts.length === 3) {
+                    // Classificação (ex: Substantivo:)
+                    const classification = `<span class="text-accent font-semibold">${parts[1]}</span>`;
+                    // Definição
+                    const defText = parts[2].trim();
+                    definitionDisplay.innerHTML = `${classification} ${defText}`;
+                } else {
+                    definitionDisplay.textContent = definition;
+                }
+                
+                definitionDisplay.classList.remove('italic', 'text-gray-500');
+                definitionDisplay.classList.add('text-gray-900', 'font-normal');
+
+            } catch (error) {
+                console.error("Erro no fluxo principal:", error);
+                wordDisplay.textContent = 'ERRO';
+                // Exibe a mensagem de erro detalhada, incluindo o 403
+                definitionDisplay.innerHTML = `<span class="font-bold text-red-600">Erro:</span> Não foi possível comunicar com a API.
+                                              <br> Detalhe: ${error.message}.
+                                              <br> <span class="text-sm">Se estiver rodando localmente, verifique sua chave API.</span>`;
+                definitionDisplay.classList.remove('text-gray-900', 'font-normal');
+                definitionDisplay.classList.add('italic', 'text-red-500');
+            } finally {
+                // 7. Habilitar o botão e ocultar o loading
+                loadingIndicator.classList.add('hidden');
+                generateButton.disabled = false;
+                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                // Atualiza o rodapé com o estado do histórico
+                footerMessage.innerHTML = `Histórico de palavras recentes (últimas ${usedWordsHistory.length} geradas): <span class="text-gray-600 font-medium">${usedWordsHistory.join(', ')}</span>`;
+            }
+        }
+
+        // Adicionar o listener ao botão
+        generateButton.addEventListener('click', displayRandomWord);
+
+        // Chamada inicial
+        window.onload = () => {
+             footerMessage.innerHTML = `A palavra é gerada dinamicamente pelo modelo, não de uma lista fixa.`;
+        };
+    </script>
 </body>
 </html>
