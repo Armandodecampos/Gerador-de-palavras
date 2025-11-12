@@ -92,7 +92,7 @@
         const footerMessage = document.getElementById('footerMessage');
 
         // --- Variáveis para Histórico de Repetição e Cancelamento ---
-        const MAX_HISTORY_SIZE = 10;
+        const MAX_HISTORY_SIZE = 50; // Aumentado para evitar repetições
         const usedWordsHistory = [];
         let definitionAbortController = new AbortController();
         // -----------------------------------------------------------
@@ -162,7 +162,7 @@
         // Função para buscar uma palavra aleatória no dicionário
         async function fetchRandomWord() {
             const historyList = usedWordsHistory.join(', ');
-            const systemPrompt = `Você é um gerador de palavras aleatórias em português. Sua tarefa é escolher uma palavra que seja de uso comum e diário, adequada para um nível de vocabulário básico a intermediário. Priorize a aleatoriedade para diversificar as escolhas. Responda apenas com a palavra (substantivo, adjetivo ou verbo no infinitivo), sem pontuação, aspas ou qualquer outro texto.`;
+            const systemPrompt = `Você é um gerador de palavras em português altamente criativo e imprevisível. Sua principal missão é fornecer palavras verdadeiramente aleatórias, evitando repetições ou padrões óbvios. Pense em uma vasta gama de tópicos (ciência, natureza, objetos, sentimentos, etc.) para garantir a máxima diversidade. A palavra deve ser de uso comum (nível fácil a intermediário). Responda APENAS com a palavra (substantivo, adjetivo ou verbo no infinitivo), sem absolutamente nenhum texto, pontuação ou aspas adicionais.`;
             let userQuery = "Gere uma palavra em português para o usuário.";
             if (historyList) {
                 userQuery += ` ESTA PALAVRA NÃO DEVE SER nenhuma das seguintes: ${historyList}.`;
