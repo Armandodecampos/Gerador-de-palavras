@@ -169,7 +169,7 @@
         // Função para buscar uma palavra aleatória no dicionário
         async function fetchRandomWord() {
             const historyList = usedWordsHistory.join(', ');
-            const systemPrompt = `Você é um gerador de palavras aleatórias em português. Sua única tarefa é escolher uma palavra de alta frequência e comum em português (substantivo, adjetivo ou verbo no infinitivo) e responder apenas com essa palavra, sem pontuação, aspas, classificação ou qualquer texto adicional. A palavra deve ser uma única entidade léxica.`;
+            const systemPrompt = `Você é um gerador de palavras aleatórias em português. Sua tarefa é escolher uma palavra que seja de uso comum e diário, adequada para um nível de vocabulário básico a intermediário. Priorize a aleatoriedade para diversificar as escolhas. Responda apenas com a palavra (substantivo, adjetivo ou verbo no infinitivo), sem pontuação, aspas ou qualquer outro texto.`;
             let userQuery = "Gere uma palavra em português para o usuário.";
             if (historyList) {
                 userQuery += ` ESTA PALAVRA NÃO DEVE SER nenhuma das seguintes: ${historyList}.`;
