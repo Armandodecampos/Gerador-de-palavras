@@ -98,19 +98,18 @@
         const generateButton = document.getElementById('generateButton');
         const footerMessage = document.getElementById('footerMessage');
 
-        // --- Variáveis para Histórico de Repetição ---
-        const MAX_HISTORY_SIZE = 10; // Limita o histórico das últimas 10 palavras
-        const usedWordsHistory = []; 
-        // ---------------------------------------------
+        // --- Variáveis para Histórico de Repetição e Cancelamento ---
+        const MAX_HISTORY_SIZE = 10;
+        const usedWordsHistory = [];
+        let definitionAbortController = new AbortController();
+        // -----------------------------------------------------------
 
 
-        // Função genérica para chamar o Gemini API com resiliência (Exponential Backoff)
-        async function callGeminiApi(systemPrompt, userQuery) {
-            // Se você estiver executando este arquivo localmente (salvo como .html), 
-            // PRECISA inserir sua chave API válida aqui.
-            // Ex: const apiKey = "SUA_CHAVE_API_AQUI";
-            // Se estiver no ambiente Canvas, mantenha como está.
-            const apiKey = "AIzaSyC_cMGdoee-wReJaM2R4l-ePo1RDhSEm8A"; 
+        // Função genérica para chamar o Gemini API com resiliência e cancelamento
+        async function callGeminiApi(systemPrompt, userQuery, signal) {
+            // IMPORTANTE: Insira sua própria chave da API do Google Gemini aqui.
+            // A chave foi removida para evitar a exposição de credenciais confidenciais.
+            const apiKey = "SUA_CHAVE_API_AQUI";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
             const payload = {
@@ -129,17 +128,16 @@
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: signal // Adiciona o AbortSignal
                     });
 
                     if (!response.ok) {
                         if (response.status === 429 && attempts < maxAttempts - 1) {
-                            const delay = Math.pow(2, attempts) * 1000 + Math.random() * 1000;
-                            await new Promise(resolve => setTimeout(resolve, delay));
+                            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000 + Math.random() * 1000));
                             attempts++;
-                            continue; // Tentar novamente
+                            continue;
                         }
-                        // Lança o erro com o status para tratamento no bloco catch
                         throw new Error(`Status da resposta da API: ${response.status}`);
                     }
 
@@ -153,46 +151,46 @@
                     }
 
                 } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Busca de definição cancelada.');
+                        throw error; // Propaga o erro para ser tratado no displayRandomWord
+                    }
                     console.error("Erro na chamada da API (tentativa " + (attempts + 1) + "):", error);
                     if (attempts < maxAttempts - 1) {
-                        const delay = Math.pow(2, attempts) * 1000 + Math.random() * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000 + Math.random() * 1000));
                         attempts++;
                     } else {
-                        // Re-lança o erro para ser capturado no displayRandomWord
                         throw new Error(`Erro final ao comunicar com o serviço da API. Código: ${error.message.includes('Status') ? error.message : 'Desconhecido'}`);
                     }
                 }
             }
         }
         
-        // Função para buscar uma palavra aleatória no dicionário (via API)
+        // Função para buscar uma palavra aleatória no dicionário
         async function fetchRandomWord() {
-            // Inclui o histórico de palavras no prompt para evitar repetição
             const historyList = usedWordsHistory.join(', ');
-            
-            // ALTERAÇÃO CRÍTICA: Pedir uma palavra de alta frequência para que seja mais comum
             const systemPrompt = `Você é um gerador de palavras aleatórias em português. Sua única tarefa é escolher uma palavra de alta frequência e comum em português (substantivo, adjetivo ou verbo no infinitivo) e responder apenas com essa palavra, sem pontuação, aspas, classificação ou qualquer texto adicional. A palavra deve ser uma única entidade léxica.`;
-            
             let userQuery = "Gere uma palavra em português para o usuário.";
             if (historyList) {
                 userQuery += ` ESTA PALAVRA NÃO DEVE SER nenhuma das seguintes: ${historyList}.`;
             }
-
             return await callGeminiApi(systemPrompt, userQuery);
         }
 
-        // Função para buscar a definição da palavra gerada
-        async function fetchDefinition(word) {
+        // Função para buscar a definição da palavra gerada, agora com cancelamento
+        async function fetchDefinition(word, signal) {
             const systemPrompt = "Aja como um lexicógrafo e forneça uma definição concisa e clara para a palavra em português. Inclua a classificação gramatical (e.g., Substantivo, Adjetivo, Verbo) no início. Omitir qualquer saudação ou introdução. Responda apenas com a classificação e a definição, formatando a classificação com dois pontos (ex: Substantivo: A definição...).";
             const userQuery = `Definição em português e classificação gramatical da palavra: ${word}.`;
-            
-            return await callGeminiApi(systemPrompt, userQuery);
+            return await callGeminiApi(systemPrompt, userQuery, signal);
         }
 
         // Função principal para gerar e exibir a palavra e sua definição
         async function displayRandomWord() {
-            // 1. Desabilitar o botão e mostrar o loading
+            // 1. Cancelar a busca de definição anterior e desabilitar o botão
+            definitionAbortController.abort();
+            definitionAbortController = new AbortController();
+            const signal = definitionAbortController.signal;
+
             generateButton.disabled = true;
             generateButton.classList.add('opacity-50', 'cursor-not-allowed');
             loadingIndicator.classList.remove('hidden');
@@ -201,56 +199,45 @@
             definitionDisplay.classList.add('italic', 'text-gray-500');
             wordDisplay.textContent = '...';
 
-            let randomWord;
-            let definition;
-            
+            let cleanedWord;
+
             try {
-                // 2. Gerar a palavra aleatória (usando a API como dicionário)
-                randomWord = await fetchRandomWord();
-                
-                // Limpeza e Validação da Palavra
-                // Normaliza e remove caracteres indesejados
-                let cleanedWord = randomWord
-                    .replace(/[^a-zA-ZáàâãéèêíìîóòôõúùûüçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÜÇ\s]/g, '') // Remove pontuação/símbolos
+                // 2. Gerar a palavra aleatória
+                const randomWord = await fetchRandomWord();
+                cleanedWord = randomWord
+                    .replace(/[^a-zA-ZáàâãéèêíìîóòôõúùûüçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÜÇ\s]/g, '')
                     .trim()
                     .toLowerCase();
                 
-                // Garantir que é uma única palavra
                 if (!cleanedWord || cleanedWord.split(/\s+/).length > 1) {
-                    // Tenta pegar a primeira palavra se houver mais de uma
-                    cleanedWord = cleanedWord.split(/\s+/)[0]; 
-                    if (!cleanedWord) {
-                         throw new Error("A palavra gerada não é válida. Tente novamente.");
-                    }
+                    cleanedWord = cleanedWord.split(/\s+/)[0];
+                    if (!cleanedWord) throw new Error("A palavra gerada não é válida. Tente novamente.");
                 }
 
-                
-                // --- 3. Gerenciamento do Histórico (Adiciona a palavra válida) ---
+                // --- 3. Gerenciamento do Histórico ---
                 usedWordsHistory.push(cleanedWord);
                 if (usedWordsHistory.length > MAX_HISTORY_SIZE) {
-                    usedWordsHistory.shift(); // Remove a palavra mais antiga
+                    usedWordsHistory.shift();
                 }
-                // -----------------------------------------------------------------
 
-
-                // 4. Atualizar a palavra exibida com animação
+                // 4. Atualizar a palavra e REATIVAR O BOTÃO
                 wordDisplay.classList.remove('fade-in');
-                wordDisplay.textContent = '';
-                void wordDisplay.offsetWidth; // Força reflow
+                void wordDisplay.offsetWidth;
                 wordDisplay.textContent = cleanedWord.toUpperCase();
                 wordDisplay.classList.add('fade-in');
+
+                generateButton.disabled = false;
+                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                loadingIndicator.classList.add('hidden');
                 
-                // 5. Buscar a definição para a palavra gerada
+                // 5. Buscar a definição (processo assíncrono que pode ser cancelado)
                 definitionDisplay.textContent = 'Buscando definição...';
-                definition = await fetchDefinition(cleanedWord);
+                const definition = await fetchDefinition(cleanedWord, signal);
 
                 // 6. Exibir a definição
-                // Formatação: Tenta destacar a classificação (ex: Substantivo: A definição...)
                 const parts = definition.match(/(\w+:)(.*)/s);
                 if (parts && parts.length === 3) {
-                    // Classificação (ex: Substantivo:)
                     const classification = `<span class="text-accent font-semibold">${parts[1]}</span>`;
-                    // Definição
                     const defText = parts[2].trim();
                     definitionDisplay.innerHTML = `${classification} ${defText}`;
                 } else {
@@ -261,21 +248,19 @@
                 definitionDisplay.classList.add('text-gray-900', 'font-normal');
 
             } catch (error) {
+                // Ignorar erro se for um AbortError
+                if (error.name === 'AbortError') {
+                    return;
+                }
                 console.error("Erro no fluxo principal:", error);
                 wordDisplay.textContent = 'ERRO';
-                // Exibe a mensagem de erro detalhada, incluindo o 403
                 definitionDisplay.innerHTML = `<span class="font-bold text-red-600">Erro:</span> Não foi possível comunicar com a API.
                                               <br> Detalhe: ${error.message}.
                                               <br> <span class="text-sm">Se estiver rodando localmente, verifique sua chave API.</span>`;
                 definitionDisplay.classList.remove('text-gray-900', 'font-normal');
                 definitionDisplay.classList.add('italic', 'text-red-500');
             } finally {
-                // 7. Habilitar o botão e ocultar o loading
-                loadingIndicator.classList.add('hidden');
-                generateButton.disabled = false;
-                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                
-                // Atualiza o rodapé com o estado do histórico
+                // Atualiza o rodapé
                 footerMessage.innerHTML = `Histórico de palavras recentes (últimas ${usedWordsHistory.length} geradas): <span class="text-gray-600 font-medium">${usedWordsHistory.join(', ')}</span>`;
             }
         }
