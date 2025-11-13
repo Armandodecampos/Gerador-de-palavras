@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -15,9 +16,9 @@
                         sans: ['Inter', 'sans-serif'],
                     },
                     colors: {
-                        'primary': '#8A2BE2', // Roxo
-                        'secondary': '#40E0D0', // Turquesa
-                        'accent': '#FF00FF', // Magenta
+                        'primary': '#4f46e5', // Indigo-600
+                        'secondary': '#eef2ff', // Indigo-50
+                        'accent': '#10b981', // Emerald-500
                     }
                 }
             }
@@ -27,228 +28,244 @@
         /* Define a fonte Inter para o corpo do documento */
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
+            background-color: #f8fafc; /* Gray-50 */
         }
-
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* Estilo para a animação de fade-in da palavra */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
         }
-
-        /* Animações */
-        .slide-in-up {
-            animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .loading-dots span {
-            animation: growAndShrink 1.2s infinite ease-in-out;
-        }
-
-        .loading-dots span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .loading-dots span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes growAndShrink {
-            0%, 100% {
-                transform: scale(0.8);
-            }
-            50% {
-                transform: scale(1.2);
-            }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
-    <script src="palavras_comuns.js"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-lg bg-white/10 backdrop-blur-lg p-8 md:p-10 rounded-xl shadow-2xl transition-all duration-300 border border-white/20">
+    <div class="w-full max-w-lg bg-white p-8 md:p-10 rounded-xl shadow-2xl transition-all duration-300 hover:shadow-primary/30 border border-indigo-100">
+
 
         <!-- Área de Exibição da Palavra -->
-        <div class="min-h-[150px] flex items-center justify-center bg-black/20 rounded-lg mb-4 p-4 shadow-inner">
-            <p id="wordDisplay" class="text-5xl md:text-7xl font-extrabold text-white text-center">
+        <div class="min-h-[150px] flex items-center justify-center bg-secondary rounded-lg mb-4 p-4 shadow-inner">
+            <p id="wordDisplay" class="text-4xl md:text-6xl font-black text-primary text-center transition-all duration-300">
                 Clique para começar!
             </p>
         </div>
         
         <!-- Área de Exibição da Definição -->
-        <div id="definitionContainer" class="min-h-[100px] bg-black/20 rounded-lg p-4 mb-8 border border-white/20 opacity-0" style="transition: opacity 0.5s ease-in-out;">
-            <div id="definitionDisplay" class="text-white/80 text-lg">
-                A definição aparecerá aqui.
+        <div class="min-h-[100px] bg-gray-50 rounded-lg p-4 mb-8 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-700 mb-2">Definição:</h2>
+            <div id="definitionDisplay" class="text-gray-600 text-base italic">
+                A definição aparecerá aqui após a geração da palavra.
             </div>
-            <div id="loadingIndicator" class="hidden flex items-center justify-center text-white font-medium">
-                <div class="loading-dots flex space-x-2">
-                    <span class="w-3 h-3 bg-accent rounded-full"></span>
-                    <span class="w-3 h-3 bg-accent rounded-full"></span>
-                    <span class="w-3 h-3 bg-accent rounded-full"></span>
-                </div>
-                <span class="ml-4">A carregar...</span>
+            <div id="loadingIndicator" class="hidden flex items-center justify-center text-primary font-medium">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                A carregar palavra e definição...
             </div>
         </div>
 
-        <!-- Filtro de Palavras Comuns -->
-        <div class="mb-4 flex items-center">
-            <input type="checkbox" id="commonWordsFilter" class="h-5 w-5 bg-black/20 border-white/20 rounded text-primary focus:ring-primary">
-            <label for="commonWordsFilter" class="ml-2 text-white">Usar apenas palavras comuns</label>
-        </div>
 
         <!-- Botão de Geração -->
         <button id="generateButton"
-            class="w-full bg-primary text-white py-4 px-6 rounded-lg font-bold text-xl shadow-lg shadow-primary/40
-                   hover:bg-secondary hover:shadow-secondary/50 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
-                   focus:outline-none focus:ring-4 focus:ring-accent/50">
+            class="w-full bg-primary text-white py-3 px-6 rounded-lg font-semibold text-lg shadow-lg shadow-primary/40 
+                   hover:bg-indigo-700 transition-all duration-300 transform hover:scale-[1.01] active:scale-95 
+                   focus:outline-none focus:ring-4 focus:ring-primary/50"
+            aria-label="Gerar nova palavra">
             Gerar Palavra
         </button>
 
         <!-- Área de Histórico de Palavras -->
         <div class="mt-8 text-center">
-            <h3 class="text-lg font-semibold text-white mb-3">Histórico da Sessão</h3>
-            <div id="historyDisplay" class="flex flex-wrap justify-center gap-2 text-sm text-white/80">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Histórico da Sessão</h3>
+            <div id="historyDisplay" class="flex flex-wrap justify-center gap-2 text-sm text-gray-600">
                 <!-- Palavras geradas aparecerão aqui -->
             </div>
         </div>
-
     </div>
 
     <script>
         
         const wordDisplay = document.getElementById('wordDisplay');
         const definitionDisplay = document.getElementById('definitionDisplay');
-        const definitionContainer = document.getElementById('definitionContainer');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const generateButton = document.getElementById('generateButton');
         const historyDisplay = document.getElementById('historyDisplay');
-        const commonWordsFilter = document.getElementById('commonWordsFilter');
 
+        // Variável para controlar o cancelamento de buscas de definição
         let definitionAbortController = new AbortController();
+        // Conjunto para armazenar palavras já geradas na sessão
         const generatedWordsHistory = new Set();
 
-        function parseDefinitionFromXML(xml) {
-            const gramGrpMatch = xml.match(/<gramGrp>(.*?)<\/gramGrp>/);
-            const defMatch = xml.match(/<def>([\s\S]*?)<\/def>/);
 
-            const gramGrp = gramGrpMatch ? gramGrpMatch[1].trim() + ':' : '';
-            let def = defMatch ? defMatch[1].trim() : "Definição não encontrada.";
+        // Função genérica para chamar o Gemini API com resiliência e cancelamento
+        async function callGeminiApi(systemPrompt, userQuery, signal) {
+            const apiKey = "AIzaSyC_cMGdoee-wReJaM2R4l-ePo1RDhSEm8A";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-            // Remove tags HTML e formatações extras da definição
-            def = def.replace(/<[^>]*>/g, '').replace(/\[\[(.*?)\]\]/g, '$1');
-
-            return { gramGrp, def };
-        }
-
-        async function fetchWordAndDefinition(signal, usedWords, useCommonWords) {
-            const maxAttempts = useCommonWords ? 50 : 10; // Aumenta as tentativas se estiver procurando por palavras comuns
-            for (let i = 0; i < maxAttempts; i++) {
-                // 1. Obter uma palavra aleatória
-                const randomResponse = await fetch('https://api.dicionario-aberto.net/random', { signal });
-                if (!randomResponse.ok) throw new Error('Falha ao buscar palavra aleatória.');
-                const randomData = await randomResponse.json();
-                const word = randomData.word;
-
-                // 2. Verificar se a palavra já foi usada
-                if (usedWords.has(word.toLowerCase())) {
-                    console.log(`Palavra repetida "${word}", tentando novamente...`);
-                    continue;
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
                 }
+            };
 
-                // 3. Aplicar filtro de palavras comuns
-                if (useCommonWords && !PALAVRAS_COMUNS.includes(word.toLowerCase())) {
-                    console.log(`Palavra "${word}" não está na lista de palavras comuns, tentando novamente...`);
-                    continue;
-                }
+            const maxAttempts = 5;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: signal
+                    });
 
-                // 4. Obter a definição da palavra
-                const definitionResponse = await fetch(`https://api.dicionario-aberto.net/word/${word}`, { signal });
-                if (!definitionResponse.ok) {
-                    console.warn(`Falha ao buscar definição para "${word}", tentando com outra palavra.`);
-                    continue;
-                }
-                const definitionData = await definitionResponse.json();
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
 
-                // 5. Processar e retornar a primeira definição encontrada
-                if (definitionData && definitionData.length > 0 && definitionData[0].xml) {
-                    const { gramGrp, def } = parseDefinitionFromXML(definitionData[0].xml);
-                    return { palavra: word, definicao: `${gramGrp} ${def}` };
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        return text; // Não fazer trim() para não quebrar o JSON
+                    } else {
+                        throw new Error("Resposta da API vazia ou inválida.");
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Busca de definição cancelada.');
+                        throw error;
+                    }
+
+                    console.error(`Erro na chamada da API (tentativa ${attempt}/${maxAttempts}):`, error.message);
+
+                    if (attempt === maxAttempts) {
+                        throw new Error(`Erro final ao comunicar com o serviço da API. Código: ${error.message}`);
+                    }
+
+                    if (error.message.includes('429')) {
+                        const delay = Math.pow(2, attempt - 1) * 1000 + Math.random() * 1000;
+                        console.log(`Aguardando ${delay.toFixed(2)}ms para a próxima tentativa...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        const delay = 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
                 }
             }
-            throw new Error('Não foi possível encontrar uma nova palavra com o filtro selecionado após várias tentativas.');
         }
 
+        // Função para buscar a palavra e sua definição em uma única chamada
+        async function fetchWordAndDefinition(signal, usedWords) {
+            let systemPrompt = `
+                Sua tarefa é gerar uma palavra em português e sua definição correspondente.
+                Siga estritamente as seguintes regras:
+                1.  A palavra deve ser de uso comum (nível fácil a intermediário).
+                2.  A definição deve ser concisa, clara e incluir a classificação gramatical (ex: Substantivo, Adjetivo).
+                3.  Sua resposta DEVE ser um objeto JSON válido, sem nenhum texto ou formatação adicional.
+                4.  O objeto JSON deve ter exatamente duas chaves: "palavra" e "definicao".
+
+                Exemplo de resposta:
+                {
+                  "palavra": "Cadeira",
+                  "definicao": "Substantivo: Assento com encosto, geralmente para uma pessoa."
+                }
+            `;
+
+            if (usedWords.size > 0) {
+                const wordsToAvoid = Array.from(usedWords).join(', ');
+                systemPrompt += `\n5. IMPORTANTE: Não gere nenhuma das seguintes palavras que já foram usadas: ${wordsToAvoid}.`;
+            }
+
+            const userQuery = "Gere uma palavra e sua definição em português no formato JSON.";
+            const jsonResponse = await callGeminiApi(systemPrompt, userQuery, signal);
+
+            // O texto da API pode vir com ```json ... ```, vamos limpar isso.
+            const cleanedJson = jsonResponse.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleanedJson);
+        }
+
+        // Função principal para gerar e exibir a palavra e sua definição
+        async function displayRandomWord() {
+            definitionAbortController.abort();
+            definitionAbortController = new AbortController();
+            const signal = definitionAbortController.signal;
+
+            generateButton.disabled = true;
+            generateButton.classList.add('opacity-50', 'cursor-not-allowed');
+            loadingIndicator.classList.remove('hidden');
+            
+            definitionDisplay.textContent = 'Gerando palavra e definição...';
+            definitionDisplay.classList.add('italic', 'text-gray-500');
+            wordDisplay.textContent = '...';
+
+            try {
+                const result = await fetchWordAndDefinition(signal, generatedWordsHistory);
+                const cleanedWord = result.palavra;
+                const definition = result.definicao;
+
+                if (!cleanedWord || !definition) {
+                    throw new Error("A resposta da API não contém a palavra ou a definição.");
+                }
+
+                // Adiciona a palavra ao histórico para evitar repetições na sessão
+                generatedWordsHistory.add(cleanedWord.toLowerCase());
+                updateHistoryDisplay(); // Atualiza a exibição do histórico
+
+                wordDisplay.classList.remove('fade-in');
+                void wordDisplay.offsetWidth;
+                wordDisplay.textContent = cleanedWord.toUpperCase();
+                wordDisplay.classList.add('fade-in');
+
+                generateButton.disabled = false;
+                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                loadingIndicator.classList.add('hidden');
+                
+                const parts = definition.match(/(\w+:)(.*)/s);
+                if (parts && parts.length === 3) {
+                    const classification = `<span class="text-accent font-semibold">${parts[1]}</span>`;
+                    const defText = parts[2].trim();
+                    definitionDisplay.innerHTML = `${classification} ${defText}`;
+                } else {
+                    definitionDisplay.textContent = definition;
+                }
+                
+                definitionDisplay.classList.remove('italic', 'text-gray-500', 'text-red-500');
+                definitionDisplay.classList.add('text-gray-900', 'font-normal');
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+                console.error("Erro no fluxo principal:", error);
+                wordDisplay.textContent = 'ERRO';
+                definitionDisplay.innerHTML = `<span class="font-bold text-red-600">Erro:</span> Não foi possível comunicar com a API.
+                                              <br> Detalhe: ${error.message}.
+                                              <br> <span class="text-sm">Se estiver rodando localmente, verifique sua chave API.</span>`;
+                definitionDisplay.classList.remove('text-gray-900', 'font-normal');
+                definitionDisplay.classList.add('italic', 'text-red-500');
+            }
+        }
+
+        // Função para atualizar a exibição do histórico
         function updateHistoryDisplay() {
             historyDisplay.innerHTML = ''; // Limpa o histórico atual
             const words = Array.from(generatedWordsHistory);
             words.forEach(word => {
                 const wordElement = document.createElement('span');
-                wordElement.className = 'bg-black/20 text-white/90 px-3 py-1 rounded-full';
+                wordElement.className = 'bg-gray-200 text-gray-800 px-2 py-1 rounded-full';
                 wordElement.textContent = word;
                 historyDisplay.appendChild(wordElement);
             });
         }
 
-        async function displayRandomWord() {
-            definitionAbortController.abort();
-            definitionAbortController = new AbortController();
-            const { signal } = definitionAbortController;
-
-            generateButton.disabled = true;
-            generateButton.classList.add('opacity-50', 'cursor-not-allowed');
-            loadingIndicator.classList.remove('hidden');
-            definitionDisplay.classList.add('hidden');
-            definitionContainer.style.opacity = '1';
-
-            wordDisplay.textContent = '';
-
-            try {
-                const useCommonWords = commonWordsFilter.checked;
-                const { palavra: cleanedWord, definicao: definition } = await fetchWordAndDefinition(signal, generatedWordsHistory, useCommonWords);
-                if (!cleanedWord || !definition) throw new Error("A resposta da API não contém a palavra ou a definição.");
-
-                generatedWordsHistory.add(cleanedWord.toLowerCase());
-                updateHistoryDisplay();
-
-                wordDisplay.textContent = cleanedWord.toUpperCase();
-                wordDisplay.classList.add('slide-in-up');
-
-                const parts = definition.match(/(\w+\.:?)(.*)/s);
-                definitionDisplay.innerHTML = parts && parts.length === 3
-                    ? `<span class="text-accent font-semibold">${parts[1]}</span> ${parts[2].trim()}`
-                    : definition;
-                
-                definitionDisplay.classList.remove('hidden');
-                definitionDisplay.classList.add('slide-in-up');
-
-            } catch (error) {
-                if (error.name === 'AbortError') return;
-                console.error("Erro no fluxo principal:", error);
-                wordDisplay.textContent = 'ERRO';
-                definitionDisplay.innerHTML = `<span class="font-bold text-red-400">Erro:</span> ${error.message}.`;
-                definitionDisplay.classList.remove('hidden');
-            } finally {
-                generateButton.disabled = false;
-                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                loadingIndicator.classList.add('hidden');
-                wordDisplay.addEventListener('animationend', () => wordDisplay.classList.remove('slide-in-up'), { once: true });
-                definitionDisplay.addEventListener('animationend', () => definitionDisplay.classList.remove('slide-in-up'), { once: true });
-            }
-        }
-
+        // Adicionar o listener ao botão
         generateButton.addEventListener('click', displayRandomWord);
     </script>
 </body>
