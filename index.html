@@ -75,6 +75,7 @@
             }
         }
     </style>
+    <script src="palavras_comuns.js"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
@@ -102,14 +103,10 @@
             </div>
         </div>
 
-        <!-- Seletor de Dificuldade -->
-        <div class="mb-4">
-            <label for="difficultySelector" class="block text-white text-sm font-bold mb-2">Nível de Dificuldade:</label>
-            <select id="difficultySelector" class="block w-full bg-black/20 text-white border border-white/20 rounded-lg py-3 px-4 focus:outline-none focus:border-accent">
-                <option value="any">Qualquer</option>
-                <option value="easy">Fácil (4-6 letras)</option>
-                <option value="medium">Intermediário (7-10 letras)</option>
-            </select>
+        <!-- Filtro de Palavras Comuns -->
+        <div class="mb-4 flex items-center">
+            <input type="checkbox" id="commonWordsFilter" class="h-5 w-5 bg-black/20 border-white/20 rounded text-primary focus:ring-primary">
+            <label for="commonWordsFilter" class="ml-2 text-white">Usar apenas palavras comuns</label>
         </div>
 
         <!-- Botão de Geração -->
@@ -138,7 +135,7 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const generateButton = document.getElementById('generateButton');
         const historyDisplay = document.getElementById('historyDisplay');
-        const difficultySelector = document.getElementById('difficultySelector');
+        const commonWordsFilter = document.getElementById('commonWordsFilter');
 
         let definitionAbortController = new AbortController();
         const generatedWordsHistory = new Set();
@@ -156,8 +153,8 @@
             return { gramGrp, def };
         }
 
-        async function fetchWordAndDefinition(signal, usedWords, difficulty) {
-            const maxAttempts = 20; // Aumenta o número de tentativas para encontrar uma palavra adequada
+        async function fetchWordAndDefinition(signal, usedWords, useCommonWords) {
+            const maxAttempts = useCommonWords ? 50 : 10; // Aumenta as tentativas se estiver procurando por palavras comuns
             for (let i = 0; i < maxAttempts; i++) {
                 // 1. Obter uma palavra aleatória
                 const randomResponse = await fetch('https://api.dicionario-aberto.net/random', { signal });
@@ -171,14 +168,9 @@
                     continue;
                 }
 
-                // 3. Aplicar filtro de dificuldade
-                const wordLength = word.length;
-                if (difficulty === 'easy' && (wordLength < 4 || wordLength > 6)) {
-                    console.log(`Palavra "${word}" não passou no filtro "Fácil" (${wordLength} letras), tentando novamente...`);
-                    continue;
-                }
-                if (difficulty === 'medium' && (wordLength < 7 || wordLength > 10)) {
-                    console.log(`Palavra "${word}" não passou no filtro "Intermediário" (${wordLength} letras), tentando novamente...`);
+                // 3. Aplicar filtro de palavras comuns
+                if (useCommonWords && !PALAVRAS_COMUNS.includes(word.toLowerCase())) {
+                    console.log(`Palavra "${word}" não está na lista de palavras comuns, tentando novamente...`);
                     continue;
                 }
 
@@ -224,8 +216,8 @@
             wordDisplay.textContent = '';
 
             try {
-                const difficulty = difficultySelector.value;
-                const { palavra: cleanedWord, definicao: definition } = await fetchWordAndDefinition(signal, generatedWordsHistory, difficulty);
+                const useCommonWords = commonWordsFilter.checked;
+                const { palavra: cleanedWord, definicao: definition } = await fetchWordAndDefinition(signal, generatedWordsHistory, useCommonWords);
                 if (!cleanedWord || !definition) throw new Error("A resposta da API não contém a palavra ou a definição.");
 
                 generatedWordsHistory.add(cleanedWord.toLowerCase());
