@@ -73,10 +73,16 @@
                    hover:bg-indigo-700 transition-all duration-300 transform hover:scale-[1.01] active:scale-95 
                    focus:outline-none focus:ring-4 focus:ring-primary/50"
             aria-label="Gerar nova palavra">
-            Gerar Palavra Dinâmica
+            Gerar Palavra
         </button>
 
-        <!-- Mensagem de Rodapé (removida) -->
+        <!-- Área de Histórico de Palavras -->
+        <div class="mt-8 text-center">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Histórico da Sessão</h3>
+            <div id="historyDisplay" class="flex flex-wrap justify-center gap-2 text-sm text-gray-600">
+                <!-- Palavras geradas aparecerão aqui -->
+            </div>
+        </div>
     </div>
 
     <script>
@@ -85,6 +91,7 @@
         const definitionDisplay = document.getElementById('definitionDisplay');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const generateButton = document.getElementById('generateButton');
+        const historyDisplay = document.getElementById('historyDisplay');
 
         // Variável para controlar o cancelamento de buscas de definição
         let definitionAbortController = new AbortController();
@@ -208,6 +215,7 @@
 
                 // Adiciona a palavra ao histórico para evitar repetições na sessão
                 generatedWordsHistory.add(cleanedWord.toLowerCase());
+                updateHistoryDisplay(); // Atualiza a exibição do histórico
 
                 wordDisplay.classList.remove('fade-in');
                 void wordDisplay.offsetWidth;
@@ -242,6 +250,18 @@
                 definitionDisplay.classList.remove('text-gray-900', 'font-normal');
                 definitionDisplay.classList.add('italic', 'text-red-500');
             }
+        }
+
+        // Função para atualizar a exibição do histórico
+        function updateHistoryDisplay() {
+            historyDisplay.innerHTML = ''; // Limpa o histórico atual
+            const words = Array.from(generatedWordsHistory);
+            words.forEach(word => {
+                const wordElement = document.createElement('span');
+                wordElement.className = 'bg-gray-200 text-gray-800 px-2 py-1 rounded-full';
+                wordElement.textContent = word;
+                historyDisplay.appendChild(wordElement);
+            });
         }
 
         // Adicionar o listener ao botão
