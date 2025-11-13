@@ -93,10 +93,11 @@
         // Função genérica para chamar o Gemini API com resiliência e cancelamento
         async function callGeminiApi(systemPrompt, userQuery, signal) {
             const apiKey = "AIzaSyC_cMGdoee-wReJaM2R4l-ePo1RDhSEm8A";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
                 systemInstruction: {
                     parts: [{ text: systemPrompt }]
                 },
