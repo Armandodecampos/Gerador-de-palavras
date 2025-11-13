@@ -97,10 +97,12 @@
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
-                tools: [{ "google_search": {} }],
                 systemInstruction: {
                     parts: [{ text: systemPrompt }]
                 },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                }
             };
 
             const maxAttempts = 5;
@@ -114,7 +116,6 @@
                     });
 
                     if (!response.ok) {
-                        // Lança um erro específico para retentativa
                         throw new Error(`API Error: ${response.status}`);
                     }
 
@@ -122,55 +123,60 @@
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                     if (text) {
-                        return text.trim();
+                        return text; // Não fazer trim() para não quebrar o JSON
                     } else {
-                        // Se a resposta for bem-sucedida, mas vazia, não tenta novamente.
                         throw new Error("Resposta da API vazia ou inválida.");
                     }
                 } catch (error) {
                     if (error.name === 'AbortError') {
                         console.log('Busca de definição cancelada.');
-                        throw error; // Propaga para tratamento externo
+                        throw error;
                     }
 
                     console.error(`Erro na chamada da API (tentativa ${attempt}/${maxAttempts}):`, error.message);
 
-                    // Se for a última tentativa, propaga o erro final
                     if (attempt === maxAttempts) {
                         throw new Error(`Erro final ao comunicar com o serviço da API. Código: ${error.message}`);
                     }
 
-                    // Verifica se o erro é de limite de taxa (429) para aplicar o backoff
                     if (error.message.includes('429')) {
                         const delay = Math.pow(2, attempt - 1) * 1000 + Math.random() * 1000;
                         console.log(`Aguardando ${delay.toFixed(2)}ms para a próxima tentativa...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
                     } else {
-                        // Para outros erros, pode-se optar por um backoff mais simples ou falhar imediatamente
-                        const delay = 1000; // Delay fixo para outros erros
+                        const delay = 1000;
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
             }
         }
-        
-        // Função para buscar uma palavra aleatória no dicionário
-        async function fetchRandomWord() {
-            const systemPrompt = `Você é um gerador de palavras em português altamente criativo e imprevisível. Sua principal missão é fornecer palavras verdadeiramente aleatórias, evitando repetições ou padrões óbvios. Pense em uma vasta gama de tópicos (ciência, natureza, objetos, sentimentos, etc.) para garantir a máxima diversidade. A palavra deve ser de uso comum (nível fácil a intermediário). Responda APENAS com a palavra (substantivo, adjetivo ou verbo no infinitivo), sem absolutamente nenhum texto, pontuação ou aspas adicionais.`;
-            const userQuery = "Gere uma palavra em português para o usuário.";
-            return await callGeminiApi(systemPrompt, userQuery);
-        }
 
-        // Função para buscar a definição da palavra gerada, agora com cancelamento
-        async function fetchDefinition(word, signal) {
-            const systemPrompt = "Aja como um lexicógrafo e forneça uma definição concisa e clara para a palavra em português. Inclua a classificação gramatical (e.g., Substantivo, Adjetivo, Verbo) no início. Omitir qualquer saudação ou introdução. Responda apenas com a classificação e a definição, formatando a classificação com dois pontos (ex: Substantivo: A definição...).";
-            const userQuery = `Definição em português e classificação gramatical da palavra: ${word}.`;
-            return await callGeminiApi(systemPrompt, userQuery, signal);
+        // Função para buscar a palavra e sua definição em uma única chamada
+        async function fetchWordAndDefinition(signal) {
+            const systemPrompt = `
+                Sua tarefa é gerar uma palavra em português e sua definição correspondente.
+                Siga estritamente as seguintes regras:
+                1.  A palavra deve ser de uso comum (nível fácil a intermediário).
+                2.  A definição deve ser concisa, clara e incluir a classificação gramatical (ex: Substantivo, Adjetivo).
+                3.  Sua resposta DEVE ser um objeto JSON válido, sem nenhum texto ou formatação adicional.
+                4.  O objeto JSON deve ter exatamente duas chaves: "palavra" e "definicao".
+
+                Exemplo de resposta:
+                {
+                  "palavra": "Cadeira",
+                  "definicao": "Substantivo: Assento com encosto, geralmente para uma pessoa."
+                }
+            `;
+            const userQuery = "Gere uma palavra e sua definição em português no formato JSON.";
+            const jsonResponse = await callGeminiApi(systemPrompt, userQuery, signal);
+
+            // O texto da API pode vir com ```json ... ```, vamos limpar isso.
+            const cleanedJson = jsonResponse.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleanedJson);
         }
 
         // Função principal para gerar e exibir a palavra e sua definição
         async function displayRandomWord() {
-            // 1. Cancelar a busca de definição anterior e desabilitar o botão
             definitionAbortController.abort();
             definitionAbortController = new AbortController();
             const signal = definitionAbortController.signal;
@@ -179,26 +185,19 @@
             generateButton.classList.add('opacity-50', 'cursor-not-allowed');
             loadingIndicator.classList.remove('hidden');
             
-            definitionDisplay.textContent = 'Gerando palavra...';
+            definitionDisplay.textContent = 'Gerando palavra e definição...';
             definitionDisplay.classList.add('italic', 'text-gray-500');
             wordDisplay.textContent = '...';
 
-            let cleanedWord;
-
             try {
-                // 2. Gerar a palavra aleatória
-                const randomWord = await fetchRandomWord();
-                cleanedWord = randomWord
-                    .replace(/[^a-zA-ZáàâãéèêíìîóòôõúùûüçÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÜÇ\s]/g, '')
-                    .trim()
-                    .toLowerCase();
-                
-                if (!cleanedWord || cleanedWord.split(/\s+/).length > 1) {
-                    cleanedWord = cleanedWord.split(/\s+/)[0];
-                    if (!cleanedWord) throw new Error("A palavra gerada não é válida. Tente novamente.");
+                const result = await fetchWordAndDefinition(signal);
+                const cleanedWord = result.palavra;
+                const definition = result.definicao;
+
+                if (!cleanedWord || !definition) {
+                    throw new Error("A resposta da API não contém a palavra ou a definição.");
                 }
 
-                // 3. Atualizar a palavra e REATIVAR O BOTÃO
                 wordDisplay.classList.remove('fade-in');
                 void wordDisplay.offsetWidth;
                 wordDisplay.textContent = cleanedWord.toUpperCase();
@@ -208,11 +207,6 @@
                 generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
                 loadingIndicator.classList.add('hidden');
                 
-                // 5. Buscar a definição (processo assíncrono que pode ser cancelado)
-                definitionDisplay.textContent = 'Buscando definição...';
-                const definition = await fetchDefinition(cleanedWord, signal);
-
-                // 6. Exibir a definição
                 const parts = definition.match(/(\w+:)(.*)/s);
                 if (parts && parts.length === 3) {
                     const classification = `<span class="text-accent font-semibold">${parts[1]}</span>`;
@@ -226,7 +220,6 @@
                 definitionDisplay.classList.add('text-gray-900', 'font-normal');
 
             } catch (error) {
-                // Ignorar erro se for um AbortError
                 if (error.name === 'AbortError') {
                     return;
                 }
