@@ -102,6 +102,16 @@
             </div>
         </div>
 
+        <!-- Seletor de Dificuldade -->
+        <div class="mb-4">
+            <label for="difficultySelector" class="block text-white text-sm font-bold mb-2">Nível de Dificuldade:</label>
+            <select id="difficultySelector" class="block w-full bg-black/20 text-white border border-white/20 rounded-lg py-3 px-4 focus:outline-none focus:border-accent">
+                <option value="any">Qualquer</option>
+                <option value="easy">Fácil (4-6 letras)</option>
+                <option value="medium">Intermediário (7-10 letras)</option>
+            </select>
+        </div>
+
         <!-- Botão de Geração -->
         <button id="generateButton"
             class="w-full bg-primary text-white py-4 px-6 rounded-lg font-bold text-xl shadow-lg shadow-primary/40
@@ -128,6 +138,7 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const generateButton = document.getElementById('generateButton');
         const historyDisplay = document.getElementById('historyDisplay');
+        const difficultySelector = document.getElementById('difficultySelector');
 
         let definitionAbortController = new AbortController();
         const generatedWordsHistory = new Set();
@@ -145,8 +156,8 @@
             return { gramGrp, def };
         }
 
-        async function fetchWordAndDefinition(signal, usedWords) {
-            const maxAttempts = 10; // Tenta buscar uma palavra nova até 10 vezes
+        async function fetchWordAndDefinition(signal, usedWords, difficulty) {
+            const maxAttempts = 20; // Aumenta o número de tentativas para encontrar uma palavra adequada
             for (let i = 0; i < maxAttempts; i++) {
                 // 1. Obter uma palavra aleatória
                 const randomResponse = await fetch('https://api.dicionario-aberto.net/random', { signal });
@@ -157,21 +168,35 @@
                 // 2. Verificar se a palavra já foi usada
                 if (usedWords.has(word.toLowerCase())) {
                     console.log(`Palavra repetida "${word}", tentando novamente...`);
-                    continue; // Pula para a próxima iteração
+                    continue;
                 }
 
-                // 3. Obter a definição da palavra
+                // 3. Aplicar filtro de dificuldade
+                const wordLength = word.length;
+                if (difficulty === 'easy' && (wordLength < 4 || wordLength > 6)) {
+                    console.log(`Palavra "${word}" não passou no filtro "Fácil" (${wordLength} letras), tentando novamente...`);
+                    continue;
+                }
+                if (difficulty === 'medium' && (wordLength < 7 || wordLength > 10)) {
+                    console.log(`Palavra "${word}" não passou no filtro "Intermediário" (${wordLength} letras), tentando novamente...`);
+                    continue;
+                }
+
+                // 4. Obter a definição da palavra
                 const definitionResponse = await fetch(`https://api.dicionario-aberto.net/word/${word}`, { signal });
-                if (!definitionResponse.ok) throw new Error(`Falha ao buscar definição para "${word}".`);
+                if (!definitionResponse.ok) {
+                    console.warn(`Falha ao buscar definição para "${word}", tentando com outra palavra.`);
+                    continue;
+                }
                 const definitionData = await definitionResponse.json();
 
-                // 4. Processar e retornar a primeira definição encontrada
+                // 5. Processar e retornar a primeira definição encontrada
                 if (definitionData && definitionData.length > 0 && definitionData[0].xml) {
                     const { gramGrp, def } = parseDefinitionFromXML(definitionData[0].xml);
                     return { palavra: word, definicao: `${gramGrp} ${def}` };
                 }
             }
-            throw new Error('Não foi possível encontrar uma nova palavra após várias tentativas.');
+            throw new Error('Não foi possível encontrar uma nova palavra com o filtro selecionado após várias tentativas.');
         }
 
         function updateHistoryDisplay() {
@@ -199,7 +224,8 @@
             wordDisplay.textContent = '';
 
             try {
-                const { palavra: cleanedWord, definicao: definition } = await fetchWordAndDefinition(signal, generatedWordsHistory);
+                const difficulty = difficultySelector.value;
+                const { palavra: cleanedWord, definicao: definition } = await fetchWordAndDefinition(signal, generatedWordsHistory, difficulty);
                 if (!cleanedWord || !definition) throw new Error("A resposta da API não contém a palavra ou a definição.");
 
                 generatedWordsHistory.add(cleanedWord.toLowerCase());
