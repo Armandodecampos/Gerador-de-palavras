@@ -88,6 +88,8 @@
 
         // Variável para controlar o cancelamento de buscas de definição
         let definitionAbortController = new AbortController();
+        // Conjunto para armazenar palavras já geradas na sessão
+        const generatedWordsHistory = new Set();
 
 
         // Função genérica para chamar o Gemini API com resiliência e cancelamento
@@ -152,8 +154,8 @@
         }
 
         // Função para buscar a palavra e sua definição em uma única chamada
-        async function fetchWordAndDefinition(signal) {
-            const systemPrompt = `
+        async function fetchWordAndDefinition(signal, usedWords) {
+            let systemPrompt = `
                 Sua tarefa é gerar uma palavra em português e sua definição correspondente.
                 Siga estritamente as seguintes regras:
                 1.  A palavra deve ser de uso comum (nível fácil a intermediário).
@@ -167,6 +169,12 @@
                   "definicao": "Substantivo: Assento com encosto, geralmente para uma pessoa."
                 }
             `;
+
+            if (usedWords.size > 0) {
+                const wordsToAvoid = Array.from(usedWords).join(', ');
+                systemPrompt += `\n5. IMPORTANTE: Não gere nenhuma das seguintes palavras que já foram usadas: ${wordsToAvoid}.`;
+            }
+
             const userQuery = "Gere uma palavra e sua definição em português no formato JSON.";
             const jsonResponse = await callGeminiApi(systemPrompt, userQuery, signal);
 
@@ -190,13 +198,16 @@
             wordDisplay.textContent = '...';
 
             try {
-                const result = await fetchWordAndDefinition(signal);
+                const result = await fetchWordAndDefinition(signal, generatedWordsHistory);
                 const cleanedWord = result.palavra;
                 const definition = result.definicao;
 
                 if (!cleanedWord || !definition) {
                     throw new Error("A resposta da API não contém a palavra ou a definição.");
                 }
+
+                // Adiciona a palavra ao histórico para evitar repetições na sessão
+                generatedWordsHistory.add(cleanedWord.toLowerCase());
 
                 wordDisplay.classList.remove('fade-in');
                 void wordDisplay.offsetWidth;
