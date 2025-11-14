@@ -90,8 +90,9 @@
                    class="w-32 text-center border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
             <p class="text-2xl font-bold text-gray-800 mt-2" id="timerDisplay">00:30</p>
         </div>
-        <audio id="startSound" src="https://sounds.sfxengine.com/short-bleep-in-a-countdown-timer-qkroocrf.wav"></audio>
-        <audio id="endSound" src="https://sounds.sfxengine.com/countdown-ding-e5nwzuxa.wav"></audio>
+        <audio id="startSound" src="https://sounds.sfxengine.com/user-arrived-notification-jitz3gzq.wav"></audio>
+        <audio id="endSound" src="https://sounds.sfxengine.com/loud-short-truck-horn-two-qo7pnfls.wav"></audio>
+        <audio id="countdownBeep" src="https://sounds.sfxengine.com/short-bleep-in-a-countdown-timer-qkroocrf.wav"></audio>
 
         <!-- Área de Histórico de Palavras -->
         <div class="mt-8 text-center">
@@ -114,6 +115,7 @@
         const timerDisplay = document.getElementById('timerDisplay');
         const startSound = document.getElementById('startSound');
         const endSound = document.getElementById('endSound');
+        const countdownBeep = document.getElementById('countdownBeep');
 
         let countdownInterval;
 
@@ -404,6 +406,10 @@
             countdownInterval = setInterval(() => {
                 timeRemaining--;
                 timerDisplay.textContent = formatTime(timeRemaining);
+
+                if (timeRemaining <= 10 && timeRemaining > 0) {
+                    countdownBeep.play();
+                }
 
                 if (timeRemaining <= 0) {
                     clearInterval(countdownInterval);
