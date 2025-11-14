@@ -164,26 +164,33 @@
         // Função para buscar a palavra e sua definição em uma única chamada
         async function fetchWordAndDefinition(signal, usedWords) {
             let systemPrompt = `
-                Sua tarefa é gerar uma palavra em português e sua definição correspondente.
+                Sua tarefa é gerar uma lista de 5 palavras em português e suas definições.
                 Siga estritamente as seguintes regras:
-                1.  A palavra deve ser de uso comum (nível fácil a intermediário).
-                2.  A definição deve ser concisa, clara e incluir a classificação gramatical (ex: Substantivo, Adjetivo).
-                3.  Sua resposta DEVE ser um objeto JSON válido, sem nenhum texto ou formatação adicional.
-                4.  O objeto JSON deve ter exatamente duas chaves: "palavra" e "definicao".
+                1.  Cada palavra deve ser de uso comum (nível fácil a intermediário).
+                2.  Cada definição deve ser concisa, clara e incluir a classificação gramatical (ex: Substantivo, Adjetivo).
+                3.  Sua resposta DEVE ser um array JSON válido, contendo exatamente 5 objetos.
+                4.  Cada objeto no array deve ter exatamente duas chaves: "palavra" e "definicao".
+                5.  Não inclua nenhum texto ou formatação fora do array JSON.
 
                 Exemplo de resposta:
-                {
-                  "palavra": "Cadeira",
-                  "definicao": "Substantivo: Assento com encosto, geralmente para uma pessoa."
-                }
+                [
+                  {
+                    "palavra": "Cadeira",
+                    "definicao": "Substantivo: Assento com encosto, geralmente para uma pessoa."
+                  },
+                  {
+                    "palavra": "Correr",
+                    "definicao": "Verbo: Mover-se rapidamente usando as pernas."
+                  }
+                ]
             `;
 
             if (usedWords.size > 0) {
                 const wordsToAvoid = Array.from(usedWords).join(', ');
-                systemPrompt += `\n5. IMPORTANTE: Não gere nenhuma das seguintes palavras que já foram usadas: ${wordsToAvoid}.`;
+                systemPrompt += `\n6. IMPORTANTE: Não gere nenhuma das seguintes palavras que já foram usadas: ${wordsToAvoid}.`;
             }
 
-            const userQuery = "Gere uma palavra e sua definição em português no formato JSON.";
+            const userQuery = "Gere uma lista de 5 palavras e suas definições em português no formato de array JSON.";
             const jsonResponse = await callGeminiApi(systemPrompt, userQuery, signal);
 
             // O texto da API pode vir com ```json ... ```, vamos limpar isso.
@@ -206,12 +213,21 @@
             wordDisplay.textContent = '...';
 
             try {
-                const result = await fetchWordAndDefinition(signal, generatedWordsHistory);
-                const cleanedWord = result.palavra;
-                const definition = result.definicao;
+                const wordList = await fetchWordAndDefinition(signal, generatedWordsHistory);
+
+                if (!Array.isArray(wordList) || wordList.length === 0) {
+                    throw new Error("A resposta da API não é uma lista de palavras válida.");
+                }
+
+                // Seleciona uma palavra aleatória da lista
+                const randomIndex = Math.floor(Math.random() * wordList.length);
+                const selectedWord = wordList[randomIndex];
+
+                const cleanedWord = selectedWord.palavra;
+                const definition = selectedWord.definicao;
 
                 if (!cleanedWord || !definition) {
-                    throw new Error("A resposta da API não contém a palavra ou a definição.");
+                    throw new Error("O objeto de palavra selecionado é inválido.");
                 }
 
                 // Adiciona a palavra ao histórico para evitar repetições na sessão
