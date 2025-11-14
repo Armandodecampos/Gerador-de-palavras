@@ -413,6 +413,8 @@
 
                 if (timeRemaining <= 0) {
                     clearInterval(countdownInterval);
+                    countdownBeep.pause();
+                    countdownBeep.currentTime = 0;
                     endSound.play();
                 }
             }, 1000);
