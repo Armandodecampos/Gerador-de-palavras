@@ -83,6 +83,16 @@
             Gerar Palavra
         </button>
 
+        <!-- Área do Cronômetro -->
+        <div class="mt-6 text-center">
+            <label for="countdownTime" class="block text-sm font-medium text-gray-700 mb-2">Tempo do Cronômetro (segundos):</label>
+            <input type="number" id="countdownTime" value="30" min="1"
+                   class="w-32 text-center border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <p class="text-2xl font-bold text-gray-800 mt-2" id="timerDisplay">00:30</p>
+        </div>
+        <audio id="startSound" src="https://sounds.sfxengine.com/short-bleep-in-a-countdown-timer-qkroocrf.wav"></audio>
+        <audio id="endSound" src="https://sounds.sfxengine.com/countdown-ding-e5nwzuxa.wav"></audio>
+
         <!-- Área de Histórico de Palavras -->
         <div class="mt-8 text-center">
             <h3 class="text-lg font-semibold text-gray-700 mb-3">Histórico da Sessão:</h3>
@@ -100,6 +110,12 @@
         const generateButton = document.getElementById('generateButton');
         const historyDisplay = document.getElementById('historyDisplay');
         const authStatus = document.getElementById('authStatus');
+        const countdownTimeInput = document.getElementById('countdownTime');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startSound = document.getElementById('startSound');
+        const endSound = document.getElementById('endSound');
+
+        let countdownInterval;
 
         // Variável para controlar o cancelamento de buscas de definição
         let definitionAbortController = new AbortController();
@@ -314,6 +330,8 @@
                 wordDisplay.textContent = cleanedWord.toUpperCase();
                 wordDisplay.classList.add('fade-in');
 
+                startCountdown();
+
                 // Tenta formatar a definição para destacar a classe gramatical
                 const parts = definition.match(/(\w+:)(.*)/s);
                 if (parts && parts.length === 3) {
@@ -365,6 +383,34 @@
         
         // Adicionar o listener ao botão
         generateButton.addEventListener('click', displayRandomWord);
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function startCountdown() {
+            clearInterval(countdownInterval);
+
+            let timeRemaining = parseInt(countdownTimeInput.value, 10);
+            if (isNaN(timeRemaining) || timeRemaining <= 0) {
+                timeRemaining = 30;
+            }
+
+            timerDisplay.textContent = formatTime(timeRemaining);
+            startSound.play();
+
+            countdownInterval = setInterval(() => {
+                timeRemaining--;
+                timerDisplay.textContent = formatTime(timeRemaining);
+
+                if (timeRemaining <= 0) {
+                    clearInterval(countdownInterval);
+                    endSound.play();
+                }
+            }, 1000);
+        }
     </script>
 </body>
 </html>
