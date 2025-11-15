@@ -91,7 +91,7 @@
             <p class="text-2xl font-bold text-gray-800 mt-2" id="timerDisplay">00:30</p>
         </div>
         <audio id="startSound" src="https://sounds.sfxengine.com/user-arrived-notification-jitz3gzq.wav"></audio>
-        <audio id="endSound" src="https://sounds.sfxengine.com/a-ding-at-the-end-x4turjhj.wav"></audio>
+        <audio id="endSound" src="https://sounds.sfxengine.com/massive-wave-crashing-on-a-beach-temfktn2.wav"></audio>
         <audio id="countdownBeep" src="https://sounds.sfxengine.com/short-bleep-in-a-countdown-timer-qkroocrf.wav"></audio>
 
         <!-- Área de Histórico de Palavras -->
@@ -134,71 +134,30 @@
          */
         function buildSystemPrompt(currentTimestamp, randomSeed, wordsToAvoid) {
             
-            // 1. Decisão sobre o Contexto Semântico (50% de chance para A ou B)
-            const isContextA = Math.random() < 0.5;
+            const coreRule = `
+                1. A palavra deve ser um **verbo no infinitivo** (ex: "correr", "falar", "brincar").
+                2. O verbo deve ser de **nível básico a intermediário**, de uso comum no português.
+            `;
 
-            // 2. Viesamento Gramatical (Tense/Singularity Bias)
-            // 'PLURAL' foi removido para garantir foco no singular ou formas não-plurais.
-            const biasOptions = ['INFINITIVE', 'PAST_TENSE', 'SINGULAR']; 
-            const grammaticalBias = biasOptions[Math.floor(Math.random() * biasOptions.length)];
-
-
-            let coreRule;
-            if (isContextA) {
-                // Contexto A: Foco em Ações e Coisas (Verbos e Substantivos Concretos)
-                coreRule = `
-                1. A palavra deve ser de **nível básico a intermediário**.
-                Prioridade: **Ação/Verbo** ou **Objeto/Substantivo Concreto**.
-                `;
-                
-                // Aplicar Tense/Singularity Bias
-                if (grammaticalBias === 'INFINITIVE') {
-                    coreRule += ` Foco principal em verbos no infinitivo (ex: 'correr', 'falar').`;
-                } else if (grammaticalBias === 'PAST_TENSE') {
-                    coreRule += ` Foco principal em verbos no pretérito perfeito do indicativo (ex: 'correu', 'falou').`;
-                } else if (grammaticalBias === 'SINGULAR') {
-                    coreRule += ` Foco em substantivos concretos no singular (ex: 'livro', 'mesa').`;
-                }
-
-            } else {
-                // Contexto B: Foco em Ideias e Qualidades (Adjetivos e Substantivos Abstratos)
-                coreRule = `
-                1. A palavra deve ser de **nível básico a intermediário**.
-                Prioridade: **Qualidade/Adjetivo** ou **Ideia/Substantivo Abstrato** (sentimentos, conceitos).
-                `;
-
-                // Aplicar Tense/Singularity Bias (foco em singular para adjetivos/abstratos)
-                coreRule += ` Foco em substantivos abstratos ou adjetivos na forma singular (ex: 'alegria', 'amarelo').`;
-            }
-            
-            // Regra Português Puro
             const languageBiasInstruction = `
                 Garanta que a palavra seja de vocabulário puro do Português, evitando anglicismos ou termos que não sejam de uso comum no idioma.
             `;
-            
-            // Regra de FORÇA: NUNCA plural
-            const singularEnforcement = `
-                2. A palavra gerada DEVE estar na sua forma singular (para substantivos/adjetivos) ou ser uma conjugação que não implique plural (ex: infinitivo, ou 3ª pessoa do singular do verbo). NUNCA gere uma palavra no plural.
-            `;
-
 
             let systemPrompt = `
-                Sua tarefa é gerar UMA ÚNICA palavra em português e sua definição.
+                Sua tarefa é gerar UM ÚNICO verbo em português e sua definição.
                 Use esta Semente de Aleatoriedade combinada (Timestamp: ${currentTimestamp}, Seed: ${randomSeed}) para garantir que sua escolha seja o mais imprevisível e diversificada possível.
                 
                 Siga estritamente as seguintes regras:
                 ${coreRule.trim()}
                 ${languageBiasInstruction.trim()}
-                ${singularEnforcement.trim()}
                 Deve ser de uso comum e cotidiano, com significado amplamente conhecido, e deve **evitar termos de nível avançado** ou jargões.
-                3. A definição deve ser concisa, clara e incluir a classificação gramatical (ex: Substantivo, Adjetivo, Verbo, etc.).
+                3. A definição deve ser concisa, clara e DEVE identificar a palavra como "Verbo".
                 4. Sua resposta DEVE ser um objeto JSON válido.
                 5. O objeto deve ter exatamente duas chaves: "palavra" e "definicao".
                 6. Não inclua nenhum texto ou formatação fora do objeto JSON.
             `;
 
             if (wordsToAvoid.length > 0) {
-                // Manter a não-repetição na sessão
                 systemPrompt += `\n7. IMPORTANTE: Não gere nenhuma das seguintes palavras que já foram usadas NESTA SESSÃO: ${wordsToAvoid}.`;
             }
 
