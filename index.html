@@ -92,7 +92,7 @@
         </div>
         <audio id="startSound" src="https://sounds.sfxengine.com/user-arrived-notification-jitz3gzq.wav"></audio>
         <audio id="endSound" src="https://sounds.sfxengine.com/a-sound-effect--for-xoq4tmlk.wav"></audio>
-        <audio id="countdownBeep" src="https://sounds.sfxengine.com/ui-icon-click-with-soft-2s2ofmno.wav"></audio>
+        <audio id="countdownBeep" src="https://sounds.sfxengine.com/three-short-beeps-eiyxdpxv.wav"></audio>
 
         <!-- Área de Histórico de Palavras -->
         <div class="mt-8 text-center">
@@ -367,7 +367,8 @@
                 timeRemaining--;
                 timerDisplay.textContent = formatTime(timeRemaining);
 
-                if (timeRemaining <= 10 && timeRemaining > 0) {
+                if (timeRemaining <= 5 && timeRemaining > 0) {
+                    countdownBeep.currentTime = 0; // Reinicia o som para garantir que toque a cada segundo
                     countdownBeep.play();
                 }
 
