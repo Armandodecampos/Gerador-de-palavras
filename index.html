@@ -91,8 +91,8 @@
             <p class="text-2xl font-bold text-gray-800 mt-2" id="timerDisplay">00:30</p>
         </div>
         <audio id="startSound" src="https://sounds.sfxengine.com/user-arrived-notification-jitz3gzq.wav"></audio>
-        <audio id="endSound" src="https://sounds.sfxengine.com/massive-wave-crashing-on-a-beach-temfktn2.wav"></audio>
-        <audio id="countdownBeep" src="https://sounds.sfxengine.com/short-bleep-in-a-countdown-timer-qkroocrf.wav"></audio>
+        <audio id="endSound" src="https://sounds.sfxengine.com/a-sound-effect--for-xoq4tmlk.wav"></audio>
+        <audio id="countdownBeep" src="https://sounds.sfxengine.com/ui-icon-click-with-soft-2s2ofmno.wav"></audio>
 
         <!-- Área de Histórico de Palavras -->
         <div class="mt-8 text-center">
@@ -135,8 +135,9 @@
         function buildSystemPrompt(currentTimestamp, randomSeed, wordsToAvoid) {
             
             const coreRule = `
-                1. A palavra deve ser um **verbo no infinitivo** (ex: "correr", "falar", "brincar").
-                2. O verbo deve ser de **nível básico a intermediário**, de uso comum no português.
+                1. A palavra deve ser preferencialmente um **substantivo comum** (ex: "casa", "livro", "cidade").
+                2. A palavra deve ser de **nível básico a intermediário**, de uso comum no português.
+                3. Ocasionalmente, para manter a variedade, pode ser gerado um verbo ou adjetivo.
             `;
 
             const languageBiasInstruction = `
@@ -144,14 +145,14 @@
             `;
 
             let systemPrompt = `
-                Sua tarefa é gerar UM ÚNICO verbo em português e sua definição.
+                Sua tarefa é gerar UMA ÚNICA palavra em português e sua definição.
                 Use esta Semente de Aleatoriedade combinada (Timestamp: ${currentTimestamp}, Seed: ${randomSeed}) para garantir que sua escolha seja o mais imprevisível e diversificada possível.
                 
                 Siga estritamente as seguintes regras:
                 ${coreRule.trim()}
                 ${languageBiasInstruction.trim()}
                 Deve ser de uso comum e cotidiano, com significado amplamente conhecido, e deve **evitar termos de nível avançado** ou jargões.
-                3. A definição deve ser concisa, clara e DEVE identificar a palavra como "Verbo".
+                3. A definição deve ser concisa, clara e incluir a classificação gramatical (ex: Substantivo, Adjetivo, Verbo, etc.).
                 4. Sua resposta DEVE ser um objeto JSON válido.
                 5. O objeto deve ter exatamente duas chaves: "palavra" e "definicao".
                 6. Não inclua nenhum texto ou formatação fora do objeto JSON.
