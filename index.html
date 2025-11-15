@@ -258,6 +258,11 @@
 
         // Função principal para gerar e exibir a palavra e sua definição
         async function displayRandomWord() {
+            // Interrompe qualquer contagem regressiva e som existentes
+            clearInterval(countdownInterval);
+            countdownBeep.pause();
+            countdownBeep.currentTime = 0;
+
             // 1. Cancelamento e Estado
             definitionAbortController.abort();
             definitionAbortController = new AbortController();
